@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>상품 썸네일 비율/크기 뷰어 (보안 적용)</title>
+    <title>상품 썸네일 비율/크기 뷰어</title>
     <style>
         body {
             font-family: 'Malgun Gothic', sans-serif;
@@ -15,7 +15,6 @@
             padding-right: 100px;
         }
         
-        /* 🔥 개선된 커스텀 파일 업로드 영역 스타일 */
         .upload-section {
             background-color: #eef2f5;
             padding: 20px;
@@ -47,20 +46,95 @@
             margin-left: 12px;
             font-size: 15px;
             font-weight: bold;
-            color: #007bff; /* 파란색으로 파일명 강조 */
+            color: #007bff; 
+        }
+
+        /* 🔥 사용법 안내 버튼 스타일 */
+        .help-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #28a745; /* 산뜻한 초록색 */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 15px;
+            transition: background-color 0.2s;
+        }
+        .help-btn:hover { background-color: #218838; }
+
+        /* 🔥 팝업(모달) 전체 화면 덮개 */
+        .modal-overlay {
+            display: none; /* 평소에는 숨김 */
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); /* 반투명 검은 배경 */
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* 🔥 팝업 내용물 상자 */
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 450px;
+            width: 90%;
+            text-align: left;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .modal-title {
+            margin-top: 0;
+            color: #333;
+            font-size: 22px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .modal-close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 28px;
+            color: #999;
+            cursor: pointer;
+            border: none;
+            background: none;
+            padding: 0;
+        }
+        .modal-close-btn:hover { color: #333; }
+        
+        /* 팝업 내부 텍스트 디자인 */
+        .modal-section { margin-bottom: 20px; }
+        .modal-section h3 { margin: 0 0 8px 0; font-size: 16px; color: #007bff; }
+        .modal-section p, .modal-section ul { margin: 0; font-size: 14px; color: #555; line-height: 1.5; }
+        .modal-section ul { padding-left: 20px; }
+        .modal-section li { margin-bottom: 5px; }
+        
+        /* 단축키 강조 뱃지 */
+        .key-badge {
+            background-color: #f1f1f1;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-weight: bold;
+            color: #333;
+            font-size: 12px;
         }
 
         .header-info {
             margin-bottom: 15px;
         }
         
-        /* 파일명(URL)이 길어도 잘 보이도록 설정 */
         .file-name {
             font-size: 15px; 
             font-weight: normal;
             color: #555;
             margin: 0 0 8px 0;
-            word-break: break-all; /* 긴 URL 줄바꿈 */
+            word-break: break-all; 
             line-height: 1.4;
         }
 
@@ -134,11 +208,14 @@
             transform: translateY(-50%); 
             background-color: rgba(0, 123, 255, 0.8);
             color: white;
-            font-size: 30px; 
-            padding: 20px 25px; 
+            padding: 15px 20px; 
             border-radius: 8px;
             z-index: 100;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
         }
         .nav-btn:hover { background-color: rgba(0, 86, 179, 1); }
         .nav-btn:disabled {
@@ -147,6 +224,12 @@
             box-shadow: none;
         }
         
+        .nav-icon { font-size: 30px; line-height: 1; }
+
+        .shortcut-hint { opacity: 0.6; font-weight: normal; }
+        .nav-btn .shortcut-hint { font-size: 13px; }
+        .preset-btn .shortcut-hint { font-size: 12px; margin-left: 4px; }
+
         #prevBtn { left: 20px; }
         #nextBtn { right: 20px; }
 
@@ -155,6 +238,8 @@
             background-color: #ffe812;
             padding: 8px 15px;
             font-size: 14px;
+            display: inline-flex;
+            align-items: center;
         }
         .preset-btn:hover { background-color: #e6d010; }
         .preset-btn:active { background-color: #cca800; }
@@ -200,14 +285,51 @@
 </head>
 <body>
 
-    <button id="prevBtn" class="nav-btn" onclick="changeImage(-1)" disabled>◀</button>
-    <button id="nextBtn" class="nav-btn" onclick="changeImage(1)" disabled>▶</button>
+    <div id="helpModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close-btn" onclick="closeModal()">×</button>
+            <h2 class="modal-title">💡 상품 썸네일 뷰어 사용법</h2>
+            
+            <div class="modal-section">
+                <h3>1. 데이터 준비하기</h3>
+                <p>이미지 URL이 한 줄씩 나열된 데이터를 엑셀에서 <b>CSV 파일 확장자(.csv)</b>로 저장해 주세요. (<span class="key-badge">http://</span> 또는 <span class="key-badge">https://</span> 형식만 인식합니다.)</p>
+            </div>
+            
+            <div class="modal-section">
+                <h3>2. 파일 업로드</h3>
+                <p>상단의 <b>[파일 선택]</b> 버튼을 눌러 저장한 CSV 파일을 불러오면 이미지가 화면에 나타납니다. 외부 서버로 전송되지 않으므로 대외비 데이터도 안전합니다.</p>
+            </div>
+            
+            <div class="modal-section">
+                <h3>3. ⌨️ 단축키 안내</h3>
+                <ul>
+                    <li><span class="key-badge">Q</span> 또는 <span class="key-badge">←</span> : 이전 이미지</li>
+                    <li><span class="key-badge">E</span> 또는 <span class="key-badge">→</span> : 다음 이미지</li>
+                    <li><span class="key-badge">1</span> : 톡딜 썸네일 크기 (350px)</li>
+                    <li><span class="key-badge">2</span> : 톡딜 상품메인 크기 (450px)</li>
+                    <li><span class="key-badge">3</span> : 대화면 크기 (600px)</li>
+                </ul>
+                <p style="font-size: 12px; margin-top: 8px; color: #ff4d4d;">* 순서 입력창에 커서가 깜빡일 때는 단축키가 작동하지 않습니다. 입력 후 빈 화면을 클릭해 주세요!</p>
+            </div>
+        </div>
+    </div>
+
+    <button id="prevBtn" class="nav-btn" onclick="changeImage(-1)" disabled>
+        <span class="nav-icon">◀</span>
+        <span class="shortcut-hint">Q / ←</span>
+    </button>
+    <button id="nextBtn" class="nav-btn" onclick="changeImage(1)" disabled>
+        <span class="nav-icon">▶</span>
+        <span class="shortcut-hint">E / →</span>
+    </button>
 
     <div class="upload-section">
         <p>📁 대외비 이미지 리스트 (CSV 파일) 불러오기</p>
         <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
         <button type="button" class="custom-upload-btn" onclick="document.getElementById('csvFileInput').click()">파일 선택</button>
         <span id="csvFileNameDisplay">선택된 파일 없음</span>
+        
+        <button type="button" class="help-btn" onclick="openModal()">💡 사용법 안내</button>
     </div>
 
     <div class="header-info">
@@ -227,9 +349,15 @@
         </div>
         
         <div class="preset-group">
-            <button type="button" class="preset-btn" onclick="setSize(350)">톡딜 썸네일 (350px)</button>
-            <button type="button" class="preset-btn" onclick="setSize(450)">톡딜 상품메인 (450px)</button>
-            <button type="button" class="preset-btn" onclick="setSize(600)">대화면 (600px)</button>
+            <button type="button" class="preset-btn" onclick="setSize(350)">
+                톡딜 썸네일 (350px) <span class="shortcut-hint">[1]</span>
+            </button>
+            <button type="button" class="preset-btn" onclick="setSize(450)">
+                톡딜 상품메인 (450px) <span class="shortcut-hint">[2]</span>
+            </button>
+            <button type="button" class="preset-btn" onclick="setSize(600)">
+                대화면 (600px) <span class="shortcut-hint">[3]</span>
+            </button>
         </div>
     </div>
 
@@ -243,9 +371,9 @@
         let imageUrls = [];
         let currentIndex = 0;
         
+        // 요소 가져오기
         const csvFileInput = document.getElementById("csvFileInput");
         const csvFileNameDisplay = document.getElementById("csvFileNameDisplay");
-        
         const imgElement = document.getElementById("viewer");
         const prevBtn = document.getElementById("prevBtn");
         const nextBtn = document.getElementById("nextBtn");
@@ -255,18 +383,31 @@
         const imageBox = document.getElementById("imageBox");
         const sizeSlider = document.getElementById("sizeSlider");
         const sizeLabel = document.getElementById("sizeLabel");
+        
+        const helpModal = document.getElementById("helpModal");
 
-        // 🔥 동일한 파일을 다시 선택할 수 있도록 클릭 시 내부 값을 비워주는 트릭
+        // 🔥 모달창 열기/닫기 함수
+        function openModal() {
+            helpModal.style.display = 'flex';
+        }
+        function closeModal() {
+            helpModal.style.display = 'none';
+        }
+        // 팝업 바깥 어두운 영역을 클릭해도 창이 닫히도록 설정
+        window.addEventListener('click', function(event) {
+            if (event.target === helpModal) {
+                closeModal();
+            }
+        });
+
         csvFileInput.addEventListener('click', function(e) {
             e.target.value = null;
         });
 
-        // 파일 선택 시 로직
         csvFileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
-            // 🔥 선택된 CSV 파일명을 화면에 고정 표시
             csvFileNameDisplay.innerText = file.name;
 
             const reader = new FileReader();
@@ -277,7 +418,7 @@
                 
                 for (let line of allLines) {
                     let cleaned = line.trim().replace(/^"|"$/g, '').replace(/,+$/, '');
-                    if (cleaned.startsWith('https:')) {
+                    if (cleaned.startsWith('http')) {
                         urls.push(cleaned);
                     }
                 }
@@ -292,7 +433,7 @@
                     updateViewer();
                     alert(`${urls.length}개의 이미지 URL을 성공적으로 불러왔습니다!`);
                 } else {
-                    alert('파일에서 유효한 이미지 URL(https: 로 시작)을 찾지 못했습니다. CSV 파일을 확인해주세요.');
+                    alert('파일에서 유효한 이미지 URL(http 또는 https로 시작)을 찾지 못했습니다. CSV 파일을 확인해주세요.');
                 }
             };
             reader.readAsText(file, 'UTF-8');
@@ -304,7 +445,6 @@
             const currentUrl = imageUrls[currentIndex];
             imgElement.src = currentUrl;
             
-            // 🔥 URL(이미지명) 전체 표기 (파싱 함수 제거)
             fileNameDisplay.innerText = currentUrl;
             
             pageInput.value = currentIndex + 1;
@@ -360,21 +500,26 @@
         resizeObserver.observe(imageBox);
 
         document.addEventListener('keydown', function(event) {
+            // 모달창이 열려있을 때는 단축키 작동 방지
+            if (helpModal.style.display === 'flex') return;
+
             if (imageUrls.length === 0) return; 
             
             if (event.target.tagName.toLowerCase() === 'input' && event.target.type !== 'range') {
                 return;
             }
             
-            if (event.key === 'ArrowLeft' && !prevBtn.disabled) {
+            const key = event.key.toLowerCase();
+
+            if ((key === 'arrowleft' || key === 'q') && !prevBtn.disabled) {
                 changeImage(-1);
-            } else if (event.key === 'ArrowRight' && !nextBtn.disabled) {
+            } else if ((key === 'arrowright' || key === 'e') && !nextBtn.disabled) {
                 changeImage(1);
-            } else if (event.key === '1') {
+            } else if (key === '1') {
                 setSize(350); 
-            } else if (event.key === '2') {
+            } else if (key === '2') {
                 setSize(450); 
-            } else if (event.key === '3') {
+            } else if (key === '3') {
                 setSize(600); 
             }
         });
